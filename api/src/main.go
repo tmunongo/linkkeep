@@ -12,7 +12,7 @@ import (
 func main() {
 	e := echo.New()
 
-	p := e.Group("")
+	p := e.Group("/app")
 	api := e.Group("/api")
 
 	authRoutes := api.Group("/auth")
