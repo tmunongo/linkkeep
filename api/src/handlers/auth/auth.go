@@ -12,6 +12,7 @@ import (
 
 type JwtCustomClaims struct {
 	Name  string `json:"name"`
+	ID    uint    `json:"id"`
 	Admin bool   `json:"admin"`
 	jwt.RegisteredClaims
 }
@@ -21,16 +22,35 @@ func (j *JwtCustomClaims) Valid() error {
 	panic("unimplemented")
 }
 
-func Login(c echo.Context) error {
+func Login(c echo.Context) (err error) {
 	username := c.FormValue("username")
 	password := c.FormValue("password")
 
-	if username != "jon" || password != "snow" {
-		return echo.ErrUnauthorized
+	// get user from db by username, if not found return error
+	user := &models.User{
+		Username: username,
+	}
+
+	u, err := user.GetUser()
+
+	if err != nil {
+		return c.JSON(500, map[string]string{
+            "error": err.Error(),
+        })
+	}
+
+	// check password
+	
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	if err != nil {
+		return c.JSON(401, map[string]string{
+			"error": "Invalid credentials",
+		})
 	}
 
 	claims := &JwtCustomClaims{
-		"Lord Snow",
+		u.Username,
+		u.ID,
 		true,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
@@ -41,7 +61,9 @@ func Login(c echo.Context) error {
 
 	t, err := token.SignedString([]byte("secret"))
 	if err != nil {
-		return err
+		return c.JSON(500, map[string]string{
+            "error": err.Error(),
+        })
 	}
 
 	return c.JSON(200, map[string]string{
@@ -49,11 +71,12 @@ func Login(c echo.Context) error {
 	})
 }
 
+
 func Register(c echo.Context) error {
 	username := c.FormValue("username")
 	password := c.FormValue("password")
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 20)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 
 	if err != nil {
 		return err
@@ -72,6 +95,7 @@ func Register(c echo.Context) error {
 
 	claims := &JwtCustomClaims{
 		u.Username,
+		u.ID,
 		false,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),

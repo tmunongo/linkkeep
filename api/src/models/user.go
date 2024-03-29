@@ -23,7 +23,17 @@ func (u *User) CreateUser() (*User, error) {
 }
 
 func (u *User) GetUser() (*User, error) {
-	err := db.First(&u, u.Username).Error
+	err := db.Where("username = ?", u.Username).First(&u).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+func (u *User) GetUserByID(id uint) (*User, error) {
+	err := db.Where("id = ?", id).Find(&u).Error
 
 	if err != nil {
 		return nil, err

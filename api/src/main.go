@@ -6,34 +6,31 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/tmunongo/linkkeep/api/src/handlers/auth"
-	"github.com/tmunongo/linkkeep/api/src/handlers/dashboard"
+	links "github.com/tmunongo/linkkeep/api/src/handlers/links"
 )
 
 func main() {
 	e := echo.New()
 
-	p := e.Group("/app")
-	api := e.Group("/api")
+	apiPublic := e.Group("/api")
+	apiProtected := e.Group("/api")
 
-	authRoutes := api.Group("/auth")
+	apiPublic.POST("/auth/login", auth.Login)
+	apiPublic.POST("/auth/register", auth.Register)
 
-	authRoutes.POST("/login", auth.Login)
-	authRoutes.POST("/register", auth.Register)
-
-	api.GET("/", func(c echo.Context) error {
-		return c.String(200, "Hello, World!")
-	})
-
-	config := echojwt.Config{
+	apiProtected.Use(echojwt.WithConfig(echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(auth.JwtCustomClaims)
 		},
 		SigningKey: []byte("secret"),
-	}
+	}))
 
-	p.Use(echojwt.WithConfig(config))
+	apiProtected.GET("/", func(c echo.Context) error {
+		return c.String(200, "Hello, World!")
+	})
 
-	p.GET("/dashboard", dashboard.GetLinks)
+	apiProtected.GET("/links", links.GetLinks)
+	apiProtected.POST("/links", links.SaveLink)
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
